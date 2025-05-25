@@ -11,38 +11,40 @@ import os
 
 app = FastAPI()
 
-# 🔐 Set your OpenAI API key from environment
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
-# 🔁 Serve static HTML from /static/index.html
+# Serve static frontend
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
 
-# 📩 Input model for POST
+# Model for incoming data
 class BirthData(BaseModel):
-    date: str       # Format: YYYY-MM-DD
-    time: str       # Format: HH:MM (24-hour)
-    location: str   # Optional placeholder for now
+    date: str
+    time: str
+    location: str
     latitude: float
     longitude: float
 
-# 🔮 Calculate simplified birth chart
+# Generate astrological breakdown
 def get_astro_data(date: str, time: str, lat: float, lon: float):
-    dt = Datetime(date, time, "+00:00")  # UTC assumed
+    dt = Datetime(date, time, "+00:00")
     pos = GeoPos(str(lat), str(lon))
     chart = Chart(dt, pos)
 
+    sun = chart.get(const.SUN)
+    moon = chart.get(const.MOON)
+    asc = chart.get(const.ASC)
+    saturn = chart.get(const.SATURN)
+
     return {
-        "Sun": chart.get(const.SUN).sign,
-        "Moon": chart.get(const.MOON).sign,
-        "Ascendant": chart.get(const.ASC).sign,
-        "Saturn": chart.get(const.SATURN).sign
+        "Sun": sun.sign,
+        "Moon": moon.sign,
+        "Ascendant": asc.sign,
+        "Saturn": saturn.sign
     }
 
-# 🧠 Generate GPT prompt from astrology
+# Build GPT prompt
 def build_prompt(astro):
     return f"""
     Generate a poetic, mystical quote under 20 words.
@@ -51,23 +53,15 @@ def build_prompt(astro):
     Use a Zen or cryptic spiritual tone.
     """
 
-# ✨ Get quote from GPT
+# Call OpenAI API safely
 def get_quote(prompt):
-    response = openai.ChatCompletion.create(
-        model="gpt-4",
-        messages=[
-            {"role": "system", "content": "You are a poetic spiritual oracle."},
-            {"role": "user", "content": prompt}
-        ],
-        temperature=0.8,
-        max_tokens=60
-    )
-    return response.choices[0].message["content"].strip()
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    if not openai.api_key:
+        return "⚠️ Missing OpenAI API Key."
 
-# 🚀 API endpoint
-@app.post("/generate-quote")
-async def generate_quote(data: BirthData):
-    astro = get_astro_data(data.date, data.time, data.latitude, data.longitude)
-    prompt = build_prompt(astro)
-    quote = get_quote(prompt)
-    return {"quote": quote, "astrology": astro}
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You are a poetic spiritual oracle."},
+                {"role": "user",
