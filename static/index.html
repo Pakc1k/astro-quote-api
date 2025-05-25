@@ -38,6 +38,7 @@
 
 <div class="container">
   <h2 class="text-center">🌌 Astro Quote Generator</h2>
+
   <form id="astroForm" class="form-horizontal" style="margin-top: 40px;">
     <div class="form-group">
       <label class="col-sm-3 control-label">Date of Birth</label>
@@ -77,6 +78,7 @@
 <script>
   document.getElementById('astroForm').addEventListener('submit', function (e) {
     e.preventDefault();
+    console.log("✅ JS form handler triggered");
 
     const data = {
       date: document.getElementById('dob').value,
@@ -86,21 +88,29 @@
       longitude: parseFloat(document.getElementById('lon').value)
     };
 
+    console.log("📤 Sending data:", data);
+
     fetch('/generate-quote', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     })
-    .then(res => res.json())
+    .then(res => {
+      console.log("🔁 Got response:", res.status);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    })
     .then(json => {
+      console.log("💫 Quote received:", json);
       document.getElementById('quoteText').textContent = json.quote;
       document.getElementById('astroData').innerHTML = `
-        Sun: ${json.astrology.Sun} | Moon: ${json.astrology.Moon} | Ascendant: ${json.astrology.Ascendant} | Saturn: ${json.astrology.Saturn}
+        Sun: ${json.astrology.Sun} | Moon: ${json.astrology.Moon} |
+        Ascendant: ${json.astrology.Ascendant} | Saturn: ${json.astrology.Saturn}
       `;
       document.getElementById('result').style.display = 'block';
     })
     .catch(err => {
-      console.error(err);
+      console.error("⚠️ Error occurred:", err);
       alert('⚠️ Something went wrong. Check your input or try again later.');
     });
   });
