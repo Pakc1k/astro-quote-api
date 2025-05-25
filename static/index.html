@@ -39,6 +39,7 @@
 <div class="container">
   <h2 class="text-center">🌌 Astro Quote Generator</h2>
 
+  <!-- Native submit prevented here -->
   <form id="astroForm" class="form-horizontal" onsubmit="return false;" style="margin-top: 40px;">
     <div class="form-group">
       <label class="col-sm-3 control-label">Date of Birth</label>
@@ -70,7 +71,7 @@
   </form>
 
   <div class="quote-box" id="result" style="display:none;">
-    <div class="quote" id="quoteText">Quote goes here...</div>
+    <div class="quote" id="quoteText"></div>
     <div class="astro-data" id="astroData"></div>
   </div>
 </div>
@@ -82,8 +83,8 @@
     const form = document.getElementById("astroForm");
 
     form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      console.log("✅ Form submission intercepted");
+      e.preventDefault(); // extra layer of safety
+      console.log("✅ Form intercepted");
 
       const data = {
         date: document.getElementById('dob').value,
@@ -93,7 +94,7 @@
         longitude: parseFloat(document.getElementById('lon').value)
       };
 
-      console.log("📤 Sending data:", data);
+      console.log("📤 Sending:", data);
 
       fetch('/generate-quote', {
         method: 'POST',
@@ -101,20 +102,20 @@
         body: JSON.stringify(data)
       })
       .then(res => {
-        console.log("🔁 Server responded with:", res.status);
-        if (!res.ok) throw new Error("HTTP " + res.status);
+        console.log("📡 Status:", res.status);
+        if (!res.ok) throw new Error("Bad response: " + res.status);
         return res.json();
       })
       .then(json => {
-        console.log("💫 Quote received:", json);
+        console.log("💫 Received:", json);
         document.getElementById('quoteText').textContent = json.quote;
-        document.getElementById('astroData').textContent =
+        document.getElementById('astroData').textContent = 
           `Sun: ${json.astrology.Sun}, Moon: ${json.astrology.Moon}, Asc: ${json.astrology.Ascendant}, Saturn: ${json.astrology.Saturn}`;
         document.getElementById('result').style.display = 'block';
       })
       .catch(err => {
         console.error("❌ Error:", err);
-        alert("Something went wrong. Please try again later.");
+        alert("Something went wrong. Please check your input or try again later.");
       });
     });
   });
