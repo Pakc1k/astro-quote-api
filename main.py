@@ -10,15 +10,18 @@ import openai
 import os
 
 app = FastAPI()
+print("🔥 main.py is running")
 
-# Serve the static folder at root
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
 
-# API MODEL
+@app.get("/ping")
+async def ping():
+    return {"status": "alive"}
+
 class BirthData(BaseModel):
     date: str
     time: str
@@ -26,66 +29,46 @@ class BirthData(BaseModel):
     latitude: float
     longitude: float
 
-# Astrology calculation
-def get_astro_data(date: str, time: str, lat: float, lon: float):
+def get_astro_data(date, time, lat, lon):
     dt = Datetime(date, time, "+00:00")
     pos = GeoPos(str(lat), str(lon))
     chart = Chart(dt, pos)
-    sun = chart.get(const.SUN)
-    moon = chart.get(const.MOON)
-    asc = chart.get(const.ASC)
-    saturn = chart.get(const.SATURN)
     return {
-        "Sun": sun.sign,
-        "Moon": moon.sign,
-        "Ascendant": asc.sign,
-        "Saturn": saturn.sign
+        "Sun": chart.get(const.SUN).sign,
+        "Moon": chart.get(const.MOON).sign,
+        "Ascendant": chart.get(const.ASC).sign,
+        "Saturn": chart.get(const.SATURN).sign
     }
 
-# Prompt generation
 def build_prompt(astro):
     return f"""
     Generate a poetic, mystical quote under 20 words.
-    Person's Sun is in {astro['Sun']}, Moon in {astro['Moon']}, Ascendant in {astro['Ascendant']}, Saturn in {astro['Saturn']}.
-    The quote should reflect emotional depth, inner clarity, and cosmic awareness.
-    Use a Zen or cryptic spiritual tone.
+    Sun: {astro['Sun']}, Moon: {astro['Moon']}, Asc: {astro['Ascendant']}, Saturn: {astro['Saturn']}.
+    Zen or cryptic tone.
     """
 
-# GPT-safe version with error handling
 def get_quote(prompt):
     openai.api_key = os.getenv("OPENAI_API_KEY")
-
     if not openai.api_key:
-        print("⚠️ OPENAI_API_KEY is missing")
-        return "⚠️ Missing OpenAI API Key."
-
+        return "⚠️ Missing API key"
     try:
         response = openai.ChatCompletion.create(
             model="gpt-4",
             messages=[
-                {"role": "system", "content": "You are a poetic spiritual oracle."},
+                {"role": "system", "content": "You are a poetic oracle."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.8,
-            max_tokens=60
+            max_tokens=60,
+            temperature=0.8
         )
         return response.choices[0].message["content"].strip()
     except Exception as e:
-        print("GPT Error:", e)
-        return "⚠️ GPT API call failed."
+        print("❌ GPT Error:", e)
+        return "⚠️ GPT error"
 
-# API endpoint
 @app.post("/generate-quote")
 async def generate_quote(data: BirthData):
-    print("📥 Birth data received:", data)
     astro = get_astro_data(data.date, data.time, data.latitude, data.longitude)
-    print("🔮 Astro data:", astro)
     prompt = build_prompt(astro)
-    print("📝 Prompt:\n", prompt)
     quote = get_quote(prompt)
-    print("💬 Quote:", quote)
     return {"quote": quote, "astrology": astro}
-
-@app.get("/ping")
-async def ping():
-    return {"status": "alive"}
