@@ -11,14 +11,14 @@ import os
 
 app = FastAPI()
 
-# 🔹 Serve the frontend from /static
+# Serve the static folder at root
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
 
-# 🔹 Input model for the quote API
+# API MODEL
 class BirthData(BaseModel):
     date: str
     time: str
@@ -26,17 +26,15 @@ class BirthData(BaseModel):
     latitude: float
     longitude: float
 
-# 🔹 Astrology engine
+# Astrology calculation
 def get_astro_data(date: str, time: str, lat: float, lon: float):
     dt = Datetime(date, time, "+00:00")
     pos = GeoPos(str(lat), str(lon))
     chart = Chart(dt, pos)
-
     sun = chart.get(const.SUN)
     moon = chart.get(const.MOON)
     asc = chart.get(const.ASC)
     saturn = chart.get(const.SATURN)
-
     return {
         "Sun": sun.sign,
         "Moon": moon.sign,
@@ -44,7 +42,7 @@ def get_astro_data(date: str, time: str, lat: float, lon: float):
         "Saturn": saturn.sign
     }
 
-# 🔹 Prompt builder
+# Prompt generation
 def build_prompt(astro):
     return f"""
     Generate a poetic, mystical quote under 20 words.
@@ -53,7 +51,7 @@ def build_prompt(astro):
     Use a Zen or cryptic spiritual tone.
     """
 
-# 🔹 GPT-safe quote generation with error handling
+# GPT quote generation with error handling
 def get_quote(prompt):
     openai.api_key = os.getenv("OPENAI_API_KEY")
     if not openai.api_key:
@@ -74,7 +72,7 @@ def get_quote(prompt):
         print("GPT Error:", e)
         return "⚠️ Failed to generate quote. Check GPT setup."
 
-# 🔹 API endpoint
+# API endpoint
 @app.post("/generate-quote")
 async def generate_quote(data: BirthData):
     print("Received birth data:", data)
