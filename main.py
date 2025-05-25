@@ -1,6 +1,7 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from datetime import datetime
 from flatlib.chart import Chart
 from flatlib.datetime import Datetime
 from flatlib.geopos import GeoPos
@@ -10,35 +11,38 @@ import os
 
 app = FastAPI()
 
-# Replace with your OpenAI API key or set as environment variable
+# 🔐 Set your OpenAI API key from environment
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
-# ---- MODELS ----
+# 🔁 Serve static HTML from /static/index.html
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
+@app.get("/")
+async def root():
+    return FileResponse("static/index.html")
+
+# 📩 Input model for POST
 class BirthData(BaseModel):
     date: str       # Format: YYYY-MM-DD
     time: str       # Format: HH:MM (24-hour)
-    location: str   # Placeholder (optional for now)
+    location: str   # Optional placeholder for now
     latitude: float
     longitude: float
 
-# ---- HELPER FUNCTIONS ----
+# 🔮 Calculate simplified birth chart
 def get_astro_data(date: str, time: str, lat: float, lon: float):
-    dt = Datetime(date, time, "+00:00")  # Assuming UTC
+    dt = Datetime(date, time, "+00:00")  # UTC assumed
     pos = GeoPos(str(lat), str(lon))
     chart = Chart(dt, pos)
 
-    sun = chart.get(const.SUN)
-    moon = chart.get(const.MOON)
-    asc = chart.get(const.ASC)
-    saturn = chart.get(const.SATURN)
-
     return {
-        "Sun": sun.sign,
-        "Moon": moon.sign,
-        "Ascendant": asc.sign,
-        "Saturn": saturn.sign
+        "Sun": chart.get(const.SUN).sign,
+        "Moon": chart.get(const.MOON).sign,
+        "Ascendant": chart.get(const.ASC).sign,
+        "Saturn": chart.get(const.SATURN).sign
     }
 
+# 🧠 Generate GPT prompt from astrology
 def build_prompt(astro):
     return f"""
     Generate a poetic, mystical quote under 20 words.
@@ -47,6 +51,7 @@ def build_prompt(astro):
     Use a Zen or cryptic spiritual tone.
     """
 
+# ✨ Get quote from GPT
 def get_quote(prompt):
     response = openai.ChatCompletion.create(
         model="gpt-4",
@@ -59,7 +64,7 @@ def get_quote(prompt):
     )
     return response.choices[0].message["content"].strip()
 
-# ---- API ENDPOINT ----
+# 🚀 API endpoint
 @app.post("/generate-quote")
 async def generate_quote(data: BirthData):
     astro = get_astro_data(data.date, data.time, data.latitude, data.longitude)
