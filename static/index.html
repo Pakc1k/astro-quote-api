@@ -1,34 +1,124 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Debug Astro</title>
-  <script>
-    document.addEventListener("DOMContentLoaded", function () {
-      document.getElementById("form").addEventListener("submit", function (e) {
-        e.preventDefault();
-        console.log("✅ JS triggered");
-        fetch("/generate-quote", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            date: "1986-10-10",
-            time: "11:15",
-            location: "Teluk Intan",
-            latitude: 4.023,
-            longitude: 101.021
-          })
-        })
-        .then(res => res.json())
-        .then(data => console.log("✅ Response:", data))
-        .catch(err => console.error("❌ Error:", err));
+  <meta charset="UTF-8">
+  <title>Astro Quote Generator</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+  <style>
+    body {
+      background-color: #111;
+      color: #eee;
+      padding-top: 50px;
+      font-family: "Helvetica Neue", sans-serif;
+    }
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .quote-box {
+      background-color: #222;
+      border-radius: 10px;
+      padding: 30px;
+      margin-top: 30px;
+      text-align: center;
+      box-shadow: 0 0 20px rgba(255,255,255,0.05);
+    }
+    .quote {
+      font-size: 24px;
+      font-style: italic;
+      margin-bottom: 10px;
+    }
+    .astro-data {
+      font-size: 14px;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2 class="text-center">🌌 Astro Quote Generator</h2>
+
+  <form id="astroForm" class="form-horizontal" onsubmit="return false;" style="margin-top: 40px;">
+    <div class="form-group">
+      <label class="col-sm-3 control-label">Date of Birth</label>
+      <div class="col-sm-9">
+        <input type="date" class="form-control" id="dob" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-sm-3 control-label">Time of Birth</label>
+      <div class="col-sm-9">
+        <input type="time" class="form-control" id="tob" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-sm-3 control-label">Latitude</label>
+      <div class="col-sm-9">
+        <input type="number" step="any" class="form-control" id="lat" required placeholder="e.g. 4.023">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="col-sm-3 control-label">Longitude</label>
+      <div class="col-sm-9">
+        <input type="number" step="any" class="form-control" id="lon" required placeholder="e.g. 101.021">
+      </div>
+    </div>
+    <div class="form-group text-center">
+      <button type="submit" class="btn btn-primary">Generate Quote</button>
+    </div>
+  </form>
+
+  <div class="quote-box" id="result" style="display:none;">
+    <div class="quote" id="quoteText">Quote goes here...</div>
+    <div class="astro-data" id="astroData"></div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    console.log("✅ JS Loaded");
+
+    const form = document.getElementById("astroForm");
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      console.log("✅ Form submission intercepted");
+
+      const data = {
+        date: document.getElementById('dob').value,
+        time: document.getElementById('tob').value,
+        location: "Earth",
+        latitude: parseFloat(document.getElementById('lat').value),
+        longitude: parseFloat(document.getElementById('lon').value)
+      };
+
+      console.log("📤 Sending data:", data);
+
+      fetch('/generate-quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      .then(res => {
+        console.log("🔁 Server responded with:", res.status);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(json => {
+        console.log("💫 Quote received:", json);
+        document.getElementById('quoteText').textContent = json.quote;
+        document.getElementById('astroData').textContent =
+          `Sun: ${json.astrology.Sun}, Moon: ${json.astrology.Moon}, Asc: ${json.astrology.Ascendant}, Saturn: ${json.astrology.Saturn}`;
+        document.getElementById('result').style.display = 'block';
+      })
+      .catch(err => {
+        console.error("❌ Error:", err);
+        alert("Something went wrong. Please try again later.");
       });
     });
-  </script>
-</head>
-<body style="background:#000; color:#fff; font-family:sans-serif; text-align:center;">
-  <h2>🌕 Astro Debug</h2>
-  <form id="form">
-    <button type="submit">Test Quote API</button>
-  </form>
+  });
+</script>
+
 </body>
 </html>
