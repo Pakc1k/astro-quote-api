@@ -11,14 +11,14 @@ import os
 
 app = FastAPI()
 
-# Serve frontend from static folder
+# Serve the static folder at root
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
 
-# API input model
+# API MODEL
 class BirthData(BaseModel):
     date: str
     time: str
@@ -26,7 +26,7 @@ class BirthData(BaseModel):
     latitude: float
     longitude: float
 
-# Astrology parser
+# Astrology calculation
 def get_astro_data(date: str, time: str, lat: float, lon: float):
     dt = Datetime(date, time, "+00:00")
     pos = GeoPos(str(lat), str(lon))
@@ -42,7 +42,7 @@ def get_astro_data(date: str, time: str, lat: float, lon: float):
         "Saturn": saturn.sign
     }
 
-# Prompt builder
+# Prompt generation
 def build_prompt(astro):
     return f"""
     Generate a poetic, mystical quote under 20 words.
@@ -51,11 +51,12 @@ def build_prompt(astro):
     Use a Zen or cryptic spiritual tone.
     """
 
-# GPT quote with error handling
+# GPT-safe version with error handling
 def get_quote(prompt):
     openai.api_key = os.getenv("OPENAI_API_KEY")
+
     if not openai.api_key:
-        print("⚠️ OPENAI_API_KEY is missing.")
+        print("⚠️ OPENAI_API_KEY is missing")
         return "⚠️ Missing OpenAI API Key."
 
     try:
@@ -71,16 +72,16 @@ def get_quote(prompt):
         return response.choices[0].message["content"].strip()
     except Exception as e:
         print("GPT Error:", e)
-        return "⚠️ Failed to generate quote. Check GPT setup."
+        return "⚠️ GPT API call failed."
 
-# Main endpoint
+# API endpoint
 @app.post("/generate-quote")
 async def generate_quote(data: BirthData):
-    print("Received birth data:", data)
+    print("📥 Birth data received:", data)
     astro = get_astro_data(data.date, data.time, data.latitude, data.longitude)
-    print("Astrology breakdown:", astro)
+    print("🔮 Astro data:", astro)
     prompt = build_prompt(astro)
-    print("Prompt generated:\n", prompt)
+    print("📝 Prompt:\n", prompt)
     quote = get_quote(prompt)
-    print("Generated quote:", quote)
+    print("💬 Quote:", quote)
     return {"quote": quote, "astrology": astro}
