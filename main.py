@@ -85,3 +85,7 @@ async def generate_quote(data: BirthData):
     quote = get_quote(prompt)
     print("💬 Quote:", quote)
     return {"quote": quote, "astrology": astro}
+
+@app.get("/ping")
+async def ping():
+    return {"status": "alive"}
