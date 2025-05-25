@@ -11,14 +11,14 @@ import os
 
 app = FastAPI()
 
-# Serve static frontend
+# 🔹 Serve the frontend from /static
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 @app.get("/")
 async def root():
     return FileResponse("static/index.html")
 
-# Model for incoming data
+# 🔹 Input model for the quote API
 class BirthData(BaseModel):
     date: str
     time: str
@@ -26,7 +26,7 @@ class BirthData(BaseModel):
     latitude: float
     longitude: float
 
-# Generate astrological breakdown
+# 🔹 Astrology engine
 def get_astro_data(date: str, time: str, lat: float, lon: float):
     dt = Datetime(date, time, "+00:00")
     pos = GeoPos(str(lat), str(lon))
@@ -44,7 +44,7 @@ def get_astro_data(date: str, time: str, lat: float, lon: float):
         "Saturn": saturn.sign
     }
 
-# Build GPT prompt
+# 🔹 Prompt builder
 def build_prompt(astro):
     return f"""
     Generate a poetic, mystical quote under 20 words.
@@ -53,7 +53,7 @@ def build_prompt(astro):
     Use a Zen or cryptic spiritual tone.
     """
 
-# Call OpenAI API safely
+# 🔹 GPT-safe quote generation with error handling
 def get_quote(prompt):
     openai.api_key = os.getenv("OPENAI_API_KEY")
     if not openai.api_key:
@@ -64,4 +64,24 @@ def get_quote(prompt):
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "You are a poetic spiritual oracle."},
-                {"role": "user",
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.8,
+            max_tokens=60
+        )
+        return response.choices[0].message["content"].strip()
+    except Exception as e:
+        print("GPT Error:", e)
+        return "⚠️ Failed to generate quote. Check GPT setup."
+
+# 🔹 API endpoint
+@app.post("/generate-quote")
+async def generate_quote(data: BirthData):
+    print("Received birth data:", data)
+    astro = get_astro_data(data.date, data.time, data.latitude, data.longitude)
+    print("Astrology breakdown:", astro)
+    prompt = build_prompt(astro)
+    print("Generated prompt:\n", prompt)
+    quote = get_quote(prompt)
+    print("Quote:", quote)
+    return {"quote": quote, "astrology": astro}
